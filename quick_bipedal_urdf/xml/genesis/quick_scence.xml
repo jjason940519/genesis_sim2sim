@@ -17,10 +17,10 @@
             width="512" height="512" mark="cross" markrgb=".8 .8 .8" />
         <material name="plane" reflectance="0.3" texture="plane" texrepeat="1 1" texuniform="true" />
         <!-- Absolute path-->
-        <hfield name="terrain" file="/home/csl/mujoco_rl/crazydog_mujoco/quick_bipedal_urdf/xml/agent_eval_gym.png" size="10.5 10.5 .4 0.1" />
+        <hfield name="terrain" file="Absolute path to agent_eval_gym.png" size="10.5 10.5 .4 0.1" />
     </asset>
     <!-- Absolute path-->
-    <include file="/home/csl/mujoco_rl/crazydog_mujoco/quick_bipedal_urdf/xml/genesis/quick_biped_wheel.xml"/>
+    <include file="Absolute path to quick_biped_wheel.xml"/>
 
     <worldbody>
         <geom name="floor" pos="0 0 0" size="0 0 .25" type="plane" material="plane"

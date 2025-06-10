@@ -1,5 +1,5 @@
 <mujoco model="quick_bipedal_urdf">
-  <compiler angle="radian" meshdir="../meshes"/>
+  <compiler angle="radian" meshdir="../../meshes"/>
   <!-- <option cone="elliptic" impratio="200" /> -->
   <option timestep="0.002" gravity="0 0 -9.81"/>
 

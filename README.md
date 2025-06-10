@@ -8,6 +8,9 @@
     ```bash
     conda env create -f environment.yml
     ```
+2. Modify xml file (in xml/genesis/quick_scene.xml):
+    <hfield name="terrain" file="Absolute path to agent_eval_gym.png" size="10.5 10.5 .4 0.1" />
+    <include file="Absolute path to quick_biped_wheel.xml"/>
 
 ## Quick Start
 1. Replay the RL policy on Biped wheel robot:
