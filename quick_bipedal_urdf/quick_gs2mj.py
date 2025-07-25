@@ -46,7 +46,7 @@ def world2self(quat, v):
     result = a - b + c
     return result.to(device)
 
-def get_obs(env_cfg, obs_scales, actions, default_dof_pos, commands=[0.0, 0.0, 0.0, 0.25]):
+def get_obs(env_cfg, obs_scales, actions, default_dof_pos, commands=[0.0, 0.0, 0.0, 0.18]):
     commands_scale = torch.tensor(
         [obs_scales["lin_vel"], obs_scales["lin_vel"], 
          obs_scales["ang_vel"], obs_scales["height_measurements"]], 
@@ -61,11 +61,13 @@ def get_obs(env_cfg, obs_scales, actions, default_dof_pos, commands=[0.0, 0.0, 0
     # print("base_ang_vel:", base_ang_vel)
     # print("commands:", commands)
 
-    dof_pos = torch.zeros(env_cfg["num_actions"], device=device, dtype=torch.float32)    
-    for i, dof_name in enumerate(env_cfg["dof_names"]):
+    dof_names = ["L_thigh_joint","L_calf_joint","R_thigh_joint","R_calf_joint"]
+    dof_pos = torch.zeros(env_cfg["num_actions"]-2, device=device, dtype=torch.float32)    
+    for i, dof_name in enumerate(dof_names):
         dof_pos[i] = get_sensor_data(dof_name+"_p")[0]
         if i==3:
             break
+    print(dof_pos)
 
     dof_vel = torch.zeros(env_cfg["num_actions"], device=device, dtype=torch.float32)
     for i, dof_name in enumerate(env_cfg["dof_names"]):
@@ -80,19 +82,31 @@ def get_obs(env_cfg, obs_scales, actions, default_dof_pos, commands=[0.0, 0.0, 0
 
     return torch.cat(
         [
+            cmds * commands_scale,  # 4
             base_ang_vel * obs_scales["ang_vel"],  # 3
             projected_gravity,  # 3
-            cmds * commands_scale,  # 4
-            (dof_pos[0:4] - default_dof_pos[0:4]) * obs_scales["dof_pos"],  # 4
+            (dof_pos[:] - default_dof_pos[[0,1,3,4]]) * obs_scales["dof_pos"],  # 4
             dof_vel * obs_scales["dof_vel"],  # 6
             actions,  # 6
         ],
         axis=-1,
     ), dof_torque
 
+def pd_control(target_q, q, kp, target_dq, dq, kd):
+    return (target_q - q) * kp + (target_dq - dq) * kd, target_q - q
+
+def get_sensor_data_forpd(sensor_name):
+    """Dynamically retrieve sensor data by name."""
+    sensor_id = mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SENSOR, sensor_name)
+    if sensor_id == -1:
+        raise ValueError(f"Sensor '{sensor_name}' not found in model!")
+    start_idx = m.sensor_adr[sensor_id]
+    dim = m.sensor_dim[sensor_id]
+    return d.sensordata[start_idx : start_idx + dim]
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="quick_wheel-legged-walking-v13") 
+    parser.add_argument("-e", "--exp_name", type=str, default="quick_wheel-legged-walking-v5(new_index)") 
     args = parser.parse_args()
     logger = DataLogger('log')
 
@@ -105,7 +119,7 @@ def main():
         print("file path:", cfg_path)
         env_cfg, obs_cfg, reward_cfg, command_cfg, curriculum_cfg, domain_rand_cfg, terrain_cfg, train_cfg = pickle.load(open(cfg_path, "rb"))
         pos_action_scale = 0.25
-        vel_action_scale = 5
+        vel_action_scale = 0.5
         dt = 0.01 # 100 hz for controller
     else:
         print("file not exist:", cfg_path)
@@ -141,9 +155,10 @@ def main():
         device=device,
         dtype=torch.float32)
 
-    print(default_dof_pos)
-    print(env_cfg["joint_action_scale"])
-    print(obs_cfg["obs_scales"])
+    kps = [15,15,0,15,15,0]
+    kds = [0.5,0.5,0.3,0.5,0.5,0.3]
+    use_mujoco_actu = False
+    dof_names = ["L_thigh_joint","L_calf_joint","L_wheel_joint","R_thigh_joint","R_calf_joint","R_wheel_joint"]
     with mujoco.viewer.launch_passive(m, d) as viewer:
         while viewer.is_running():
             
@@ -160,15 +175,17 @@ def main():
             history_obs_buf[-1, :] = slice_obs_buf 
 
             # update action
-            target_dof_pos = actions[0:4] * pos_action_scale + default_dof_pos[0:4]
-            target_dof_vel = actions[4:6] * vel_action_scale
-            target_dof_pos = torch.clamp(target_dof_pos, dof_pos_lower[0:4],dof_pos_upper[0:4])
+            target_dof_pos = actions[[0,1,3,4]] * pos_action_scale + default_dof_pos[[0,1,3,4]]
+            # target_dof_pos = default_dof_pos[0:4]
+            target_dof_vel = actions[[2,5]] * vel_action_scale
+            target_dof_pos = torch.clamp(target_dof_pos, dof_pos_lower[[0,1,3,4]],dof_pos_upper[[0,1,3,4]])
             # print("act:", act)
-            for i in range(env_cfg["num_actions"]-2):
-                d.ctrl[i] = target_dof_pos.detach().cpu().numpy()[i]
+            if use_mujoco_actu:
+                for i in range(env_cfg["num_actions"]-2):
+                    d.ctrl[i] = target_dof_pos.detach().cpu().numpy()[i]
 
-            d.ctrl[4] = target_dof_vel.detach().cpu().numpy()[0]
-            d.ctrl[5] = target_dof_vel.detach().cpu().numpy()[1]
+                d.ctrl[4] = target_dof_vel.detach().cpu().numpy()[0]
+                d.ctrl[5] = target_dof_vel.detach().cpu().numpy()[1]
 
             base_height = d.qpos[2]
 
@@ -182,10 +199,25 @@ def main():
             if reset_flag:
                 mujoco.mj_resetData(m, d) 
                 logger.clear_buffer()
-                
             # simulate in one step
             step_start = time.time()
             for i in range(5):
+                if use_mujoco_actu == False:
+                    qpos = np.array([get_sensor_data_forpd(f"{name}_p")[0] for name in dof_names])
+                    print(qpos)
+                    qvel = np.array([get_sensor_data_forpd(f"{name}_v")[0] for name in dof_names])
+                    dis_pos = target_dof_pos.detach().cpu().numpy()
+                    dis_vel = target_dof_vel.detach().cpu().numpy()
+                    dis_pos_c = [dis_pos[0], dis_pos[1], 0,dis_pos[2], dis_pos[3],0]
+                    dis_vel_c = [0, 0, dis_vel[0] ,0 ,0 , dis_vel[1]]
+                    print(dis_pos)
+                    tau, a = pd_control(dis_pos_c, qpos, kps, dis_vel_c, qvel, kds)
+                    d.ctrl[0] = tau[0]
+                    d.ctrl[1] = tau[1]
+                    d.ctrl[2] = tau[2]
+                    d.ctrl[3] = tau[3]
+                    d.ctrl[4] = tau[4]
+                    d.ctrl[5] = tau[5]
                 mujoco.mj_step(m, d)
 
             viewer.sync()

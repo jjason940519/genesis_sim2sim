@@ -44,7 +44,7 @@
   </asset>
 
   <worldbody>
-    <body name="base_link" pos="0 0 0.5" >
+    <body name="base_link" pos="0 0 0.4" >
         <inertial pos="-0.03497 7.1375E-05 0.055169" quat="1 0 0 0" mass="2.327" diaginertia="0.010702 0.010715 0.014614" />
         <freejoint />
         <site name="imu" pos="0 0 0" size="0.01" rgba="0 0 1 1"/>
@@ -67,7 +67,7 @@
             <geom size="0.03 0.015" pos="0 -0.00255 -0.18" quat="0.707388 0.706825 0 0" type="cylinder" rgba="0 0 0 0"/>
             <body name="R_wheel_link" pos="0 -0.04255 -0.18">
               <inertial pos="-6.2331e-05 0.00898741 -1.05886e-08" quat="0.707107 0 0 0.707107" mass="0.3" diaginertia="0.000934 0.00048 0.00048"/>
-              <joint name="R_wheel_joint" pos="0 0 0" axis="0 1 0" actuatorfrcrange="-3.69 3.69" damping="0.003" armature="0.005" stiffness="0"/>
+              <joint name="R_wheel_joint" pos="0 0 0" axis="0 1 0" actuatorfrcrange="-3.69 3.69" damping="0.005" armature="0.004" stiffness="0" frictionloss="0.6"/>
               <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.152941 0.152941 0.152941 1" mesh="R_wheel_link"/>
               <geom size="0.07 0.0115" pos="0 0.01 0" quat="0.707388 0.706825 0 0" type="cylinder" rgba="0 0 0 0" />
             </body>
@@ -86,7 +86,7 @@
             <geom size="0.03 0.015" pos="0 0.00255 -0.18" quat="0.707388 -0.706825 0 0" type="cylinder" rgba="0 0 0 0"/>
             <body name="L_wheel_link" pos="0 0.04255 -0.18">
               <inertial pos="-8.11407e-10 -0.00898741 2.81785e-10" quat="0.707107 0 0 0.707107" mass="0.3" diaginertia="0.000934 0.00048 0.00048"/>
-              <joint name="L_wheel_joint" pos="0 0 0" axis="0 1 0" actuatorfrcrange="-3.69 3.69" damping="0.003" armature="0.005" stiffness="0"/>
+              <joint name="L_wheel_joint" pos="0 0 0" axis="0 1 0" actuatorfrcrange="-3.69 3.69" damping="0.005" armature="0.004" stiffness="0" frictionloss="0.6"/>
               <geom type="mesh" contype="0" conaffinity="0" group="1" density="0" rgba="0.152941 0.152941 0.152941 1" mesh="L_wheel_link"/>
               <geom size="0.07 0.0115" pos="0 -0.01 0" quat="0.707388 -0.706825 0 0" type="cylinder" rgba="0 0 0 0" />
             </body>
@@ -96,16 +96,21 @@
   </worldbody>
 
  <actuator>
-    <position name="R_thigh" joint="R_thigh_joint" kp="15" kv="0.5" ctrlrange="0 2.1" forcerange="-20 20"/> 
+    <!-- <position name="R_thigh" joint="R_thigh_joint" kp="15" kv="0.5" ctrlrange="0 2.1" forcerange="-20 20"/> 
     <position name="R_calf" joint="R_calf_joint" kp="15" kv="0.5" ctrlrange="-3 0" forcerange="-20 20"/>
     <position name="L_thigh" joint="L_thigh_joint" kp="15" kv="0.5" ctrlrange="0 2.1" forcerange="-20 20"/>
     <position name="L_calf" joint="L_calf_joint" kp="15" kv="0.5" ctrlrange="-3 0" forcerange="-20 20"/> 
     
-    <!-- <intvelocity name="L_wheel" joint="L_wheel_joint" kp="15" kv="0.3" forcerange="-500 500" actrange="-300 300"/>
-    <intvelocity name="R_wheel" joint="R_wheel_joint" kp="15" kv="0.3" forcerange="-500 500" actrange="-300 300"/>  -->
     <velocity name="R_wheel" joint="R_wheel_joint" kv="0.3" forcerange="-4 4" ctrlrange="-60 60"/>
-    <velocity name="L_wheel" joint="L_wheel_joint" kv="0.3" forcerange="-4 4" ctrlrange="-60 60"/>
-   
+    <velocity name="L_wheel" joint="L_wheel_joint" kv="0.3" forcerange="-4 4" ctrlrange="-60 60"/> -->
+
+    <motor name="L_thigh_motor" joint="L_thigh_joint" />
+    <motor name="L_calf_motor" joint="L_calf_joint" />
+    <motor ctrlrange="-15 15" name="L_wheel_motor" joint="L_wheel_joint" />
+    <motor name="R_thigh_motor" joint="R_thigh_joint" />
+    <motor name="R_calf_motor" joint="R_calf_joint" />
+    <motor ctrlrange="-15 15" name="R_wheel_motor" joint="R_wheel_joint" />
+
   </actuator>
 
   <sensor>
@@ -113,20 +118,18 @@
     <!-- <jointpos name="L_hip_pos" joint="L_hip_joint" /> -->
     <jointpos name="L_thigh_joint_p" joint="L_thigh_joint" />
     <jointpos name="L_calf_joint_p" joint="L_calf_joint" />
-
+    <jointpos name="L_wheel_joint_p" joint="L_wheel_joint" />
     <!-- <jointpos name="R_hip_pos" joint="R_hip_joint" /> -->
     <jointpos name="R_thigh_joint_p" joint="R_thigh_joint" />
     <jointpos name="R_calf_joint_p" joint="R_calf_joint" />
+    <jointpos name="R_wheel_joint_p" joint="R_wheel_joint" />
 
     <!-- <jointvel name="L_hip_vel" joint="L_hip_joint" /> -->
     <jointvel name="L_thigh_joint_v" joint="L_thigh_joint" />
     <jointvel name="L_calf_joint_v" joint="L_calf_joint" />
-
-    <!-- <jointvel name="R_hip_vel" joint="R_hip_joint" /> -->
+    <jointvel name="L_wheel_joint_v" joint="L_wheel_joint" />
     <jointvel name="R_thigh_joint_v" joint="R_thigh_joint" />
     <jointvel name="R_calf_joint_v" joint="R_calf_joint" />
-
-    <jointvel name="L_wheel_joint_v" joint="L_wheel_joint" />
     <jointvel name="R_wheel_joint_v" joint="R_wheel_joint" />
 
     <jointactuatorfrc name="L_thigh_joint_t" joint="L_thigh_joint" noise="0.01" /> 
